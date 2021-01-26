@@ -4,13 +4,13 @@ __lua__
 title='spacefishing'
 
 -- controls
-controls={
+controls = {
 	left=0,
 	right=1,
 	up=2,
 	down=3,
 	grab=4,
-	fire=5
+	reel=5
 }
 
 -- flags
@@ -22,11 +22,12 @@ game_objects={}
 player = {
 	name="player",
 	health=3,
+	x=0,
+	y=0,
+	active_sprite=0,
 	sprites={
 		idle=001
-	},
-	x=0,
-	y=0
+	}
 }
 
 function player:new()
@@ -39,6 +40,23 @@ end
 
 function player:update()
 	-- do player stuff
+	print(self.name..', x: '..self.x..' y: '..self.y)
+end
+
+-- stardine, a space fish
+stardine = {
+	name="stardine",
+	x=0,
+	y=0
+}
+function stardine:new()
+	o = {}
+	setmetatable(o, self)
+	self.__index=self
+
+	return o
+end
+function stardine:update()
 	print(self.name..', x: '..self.x..' y: '..self.y)
 end
 
@@ -68,11 +86,11 @@ function _update()
 end
 
 function show_title()
-	-- for now, jsut print. make it fancy later
+	-- for now, just print. make it fancy later
 	print(title)
 	print('press ❎ to start')
 	while true do
-		if (btn(controls.fire)) then
+		if (btn(controls.reel) or btn(controls.grab)) then
 			loaded=true
 			break
 		end
