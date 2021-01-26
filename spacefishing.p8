@@ -26,12 +26,21 @@ player = {
 		idle=001
 	},
 	x=0,
-	y=0,
-	update=function(self)
-		-- do player stuff
-		print(self.name..', x: '..self.x..' y: '..self.y)
-	end
+	y=0
 }
+
+function player:new()
+	o = {}
+	setmetatable(o, self)
+	self.__index=self
+
+	return o
+end
+
+function player:update()
+	-- do player stuff
+	print(self.name..', x: '..self.x..' y: '..self.y)
+end
 
 function _init()
 	cls()
@@ -72,7 +81,7 @@ end
 
 function start_game()
 	-- set some values or whatever
-	add(game_objects, player)
+	add(game_objects, player:new())
 	started=true
 end
 
