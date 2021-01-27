@@ -13,12 +13,65 @@ controls = {
 	reel=5
 }
 
--- flags
-loaded=false
-started=false
+-- base world class
+world = {}
+function world:new(init, draw, update)
+	o = {}
+	setmetatable(o, self)
+	self.__index=self
 
--- game objects
-game_objects={}
+	o.initialized = false
+	o.game_objects = {}
+
+	-- methods
+	o.init = init
+	o.draw = draw
+	o.update = update
+
+	return o
+end
+
+-- create the title world
+title_world = world:new(
+	function(self) --init
+		self.initialized = true
+	end,
+	function(self) --draw
+		foreach(self.game_objects, function(obj) obj:draw() end)
+	end,
+	function(self) --update
+		if (self.initialized == false) then
+			self:init()
+		end
+		print(title)
+		print('press ❎ to start')
+		if (btn(controls.reel) or btn(controls.grab)) then
+			-- change worlds
+			active_world=test_world
+		end
+
+		foreach(self.game_objects, function(obj) obj:update() end)
+	end
+)
+
+-- create the title world
+test_world = world:new(
+	function (self) --init
+		self.initialized = true
+		add(self.game_objects, player:new())
+	end,
+	function(self) --draw
+		foreach(self.game_objects, function(obj) obj:draw() end)
+	end,
+	function(self) --update
+		if (self.initialized == false) then
+			self:init()
+		end
+		print(title)
+		foreach(self.game_objects, function(obj) obj:update() end)
+	end
+)
+
 player = {
 	name="player",
 	health=3,
@@ -41,14 +94,14 @@ function player:new()
 	return o
 end
 
+function player:draw()
+	print("harpoon_fired: "..tostring(self.harpoon_fired))
+end
+
 function player:update()
 	-- do player stuff
 	self:handle_keys()
 	self:harpoon_ctrl()
-end
-
-function player:draw()
-	print("harpoon_fired: "..tostring(self.harpoon_fired))
 end
 
 function player:handle_keys()
@@ -79,69 +132,35 @@ function player:harpoon_ctrl()
 	end
 end
 
--- stardine, a space fish
-stardine = {
-	name="stardine",
-	x=0,
-	y=0
-}
-function stardine:new()
+-- item base
+item = { name="",x=0,y=0,sprite=0 }
+function item:new()
 	o = {}
 	setmetatable(o, self)
 	self.__index=self
 
 	return o
 end
-function stardine:update()
+function item:update()
 	print(self.name..', x: '..self.x..' y: '..self.y)
 end
-function stardine:draw() end
+function item:draw() end
+
 function _init()
 	cls()
-	show_title()
+	active_world = title_world
+	active_world:init()
 end
 
 function _update()
-	-- initial load
-	if (loaded!=true) then
-		return
-	end
-
-	-- start game logic
 	cls()
-
-	if (started!=true) then
-		start_game()
-	end
-
-	print(title)
-
-	-- iterate over gameobjects
-	-- and update them all
-	foreach(game_objects, function(obj) obj:update() end)
+	active_world:update()
 end
 
 function _draw()
-	foreach(game_objects, function(obj) obj:draw() end)
+	active_world:draw()
 end
 
-function show_title()
-	-- for now, just print. make it fancy later
-	print(title)
-	print('press ❎ to start')
-	while true do
-		if (btn(controls.reel) or btn(controls.grab)) then
-			loaded=true
-			break
-		end
-	end
-end
-
-function start_game()
-	-- set some values or whatever
-	add(game_objects, player:new())
-	started=true
-end
 
 __gfx__
 00000000dddddddd1111111100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
