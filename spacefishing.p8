@@ -24,6 +24,9 @@ player = {
 	health=3,
 	x=0,
 	y=0,
+	harpoon_fired=false,
+	harpoon_tick=0,
+	harpoon_cooldown=20,
 	active_sprite=0,
 	sprites={
 		idle=001
@@ -40,7 +43,40 @@ end
 
 function player:update()
 	-- do player stuff
-	print(self.name..', x: '..self.x..' y: '..self.y)
+	self:handle_keys()
+	self:harpoon_ctrl()
+end
+
+function player:draw()
+	print("harpoon_fired: "..tostring(self.harpoon_fired))
+end
+
+function player:handle_keys()
+	--harpoon fire controls
+	if (btnp(controls.left)) then
+		--fire left
+		self.harpoon_fired=true
+	elseif (btnp(controls.right)) then
+		--fire right
+		self.harpoon_fired=true
+	elseif (btnp(controls.up)) then
+		--fire up
+		self.harpoon_fired=true
+	elseif (btnp(controls.down)) then
+		--fire down
+		self.harpoon_fired=true
+	end
+end
+
+function player:harpoon_ctrl()
+	if (self.harpoon_fired==true) then
+		if (self.harpoon_tick == self.harpoon_cooldown) then
+			self.harpoon_fired=false
+			self.harpoon_tick=0
+		else
+			self.harpoon_tick+=1
+		end
+	end
 end
 
 -- stardine, a space fish
@@ -59,7 +95,7 @@ end
 function stardine:update()
 	print(self.name..', x: '..self.x..' y: '..self.y)
 end
-
+function stardine:draw() end
 function _init()
 	cls()
 	show_title()
@@ -83,6 +119,10 @@ function _update()
 	-- iterate over gameobjects
 	-- and update them all
 	foreach(game_objects, function(obj) obj:update() end)
+end
+
+function _draw()
+	foreach(game_objects, function(obj) obj:draw() end)
 end
 
 function show_title()
