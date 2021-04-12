@@ -10,6 +10,34 @@ win = {
 left,right,up,down,use1,use2=0,1,2,3,4,5
 black,dark_blue,dark_purple,dark_green,brown,dark_gray,light_gray,white,red,orange,yellow,green,blue,indigo,pink,peach=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
 
+-- helper functions
+
+function min(l, r)
+	if l < r then
+		return l
+	else
+		return r
+	end
+end
+
+function max(l, r)
+	if l > r then
+		return l
+	else
+		return r
+	end
+end
+
+function lerp (from, to, step)
+	if from > to then
+		return max(to, from-step)
+	elseif from < to then
+		return min(to, from+step)
+	else
+		return to
+	end
+end
+
 -- class definitions
 
 world = {}
@@ -113,17 +141,50 @@ function player:init()
 	idle_anim = animation:new(1,2, 0.5, true)
 	self:add_anim("idle", idle_anim)
 	self.anim = "idle"
+
+	self.vel = {x=0, y=0}
+	self.jump_pow = 7
+	self.grav = 1
+	self.accel = 0.25
+	self.m_speed = 2
+	self.fric = 0.5
 end
 function player:update()
+	local floor = win.h-16
+	local moving = false
+
 	if btn(left) then
-		self.x -= 1
+		self.vel.x = max(self.vel.x-self.accel, -self.m_speed)
 		self.flip = true
+		moving = true
 	end
 
 	if btn(right) then
-		self.x += 1
+		self.vel.x = min(self.vel.x+self.accel, self.m_speed)
 		self.flip = false
+		moving = true
 	end
+
+	-- friction
+	if not moving then
+		self.vel.x = lerp(self.vel.x, 0, self.fric)
+	end
+
+	-- gravity
+	if self.y < floor then
+		self.vel.y -= self.grav
+	else -- grounded
+		self.vel.y = 0
+		self.y = floor
+	end
+
+	-- jump
+	if btnp(use1) and self.y == floor then
+		self.vel.y += self.jump_pow
+	end
+
+	self.x += self.vel.x
+	self.y -= self.vel.y
 
 	self:handle_animation()
 end
