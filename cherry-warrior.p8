@@ -2,7 +2,7 @@ pico-8 cartridge // http://www.pico-8.com
 version 29
 __lua__
 
--- constants
+-- consts
 win = {
 	w = 128,
 	h = 128
@@ -11,6 +11,13 @@ left,right,up,down,use1,use2=0,1,2,3,4,5
 black,dark_blue,dark_purple,dark_green,brown,dark_gray,light_gray,white,red,orange,yellow,green,blue,indigo,pink,peach=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
 
 -- helper functions
+function abs(v)
+	if v > 0 then
+		return v
+	else
+		return v*-1
+	end
+end
 
 function min(l, r)
 	if l < r then
@@ -29,6 +36,10 @@ function max(l, r)
 end
 
 function lerp (from, to, step)
+	if abs(from - to ) < step then
+		return to
+	end
+
 	if from > to then
 		return max(to, from-step)
 	elseif from < to then
@@ -79,10 +90,10 @@ function entity:new(x, y, w, h, sprt)
 	this.h = h
 	this.i_spr = sprt -- initial sprite
 	this.spr = this.i_spr -- active sprite
-	this.anm_tmr = 0 -- animation timer
+	this.anm_tmr = 0 -- anim timer
 	this.flip = false
 
-	this.anim = nil -- active animation
+	this.anim = nil -- active anim
 	this.anims = {} -- list of anims
 
 	this.init = function() end
@@ -94,38 +105,31 @@ end
 function entity:add_anim(name, anim)
 	self.anims[name] = anim
 end
-function entity:handle_animation()
-	-- based on the active animation, get the animation and run through the sprites
+function entity:set_anim(name)
+	self.anim = name
+end
+function entity:handle_anim()
+	-- based on the active anim, get the anim and run through the sprites
 	if self.anim then
 		local anim = self.anims[self.anim]
-		if not anim.playing then
-			self.spr = anim.start_f
-			anim.playing = true
-		end
 		if time() - anim.tmr > anim.delay then
 			self.spr += 1
-			if self.spr > anim.end_f then
-				if anim.loop then
-					self.spr = anim.start_f
-				else
-					self.spr = self.i_spr
-				end
+			if self.spr > anim.end_f or self.spr < anim.start_f then
+				self.spr = anim.start_f
 			end
 			anim.tmr = time()
 		end
 	end
 end
 
-animation = {}
-function animation:new(s, e, d, l)
+anim = {}
+function anim:new(s, e, d)
 	this = {}
 	setmetatable(this, self)
 	self.__index=self
 
 	this.start_f = s -- start frame
 	this.end_f = e   -- end frame
-	this.loop = l or false -- loop animation
-	this.playing = false
 	this.tmr = 0 -- timer
 	this.delay = d
 
@@ -138,16 +142,19 @@ active_world = nil
 
 player = entity:new(8, win.h-16, 8, 8, 1)
 function player:init()
-	idle_anim = animation:new(1,2, 0.5, true)
-	self:add_anim("idle", idle_anim)
-	self.anim = "idle"
+	self:add_anim("idle", anim:new(1,2,0.5))
+	self:add_anim("move", anim:new(3,4,0.15))
+	self:add_anim("jump", anim:new(2,2,0))
+
+	self:set_anim("idle")
 
 	self.vel = {x=0, y=0}
-	self.jump_pow = 7
+	self.jump_pow = 5
 	self.grav = 1
 	self.accel = 0.25
-	self.m_speed = 2
-	self.fric = 0.5
+	self.m_speed = 2.5
+	self.fric = 0.25
+	self.grounded = true
 end
 function player:update()
 	local floor = win.h-16
@@ -166,27 +173,33 @@ function player:update()
 	end
 
 	-- friction
-	if not moving then
+	if not moving and self.grounded then
 		self.vel.x = lerp(self.vel.x, 0, self.fric)
+		self:set_anim("idle")
+	else
+		self:set_anim("move")
 	end
 
-	-- gravity
+	-- gravity / grounded condition
 	if self.y < floor then
 		self.vel.y -= self.grav
+		self:set_anim("jump")
 	else -- grounded
 		self.vel.y = 0
 		self.y = floor
+		self.grounded = true
 	end
 
 	-- jump
-	if btnp(use1) and self.y == floor then
+	if btnp(use1) and self.grounded then
 		self.vel.y += self.jump_pow
+		self.grounded = false
 	end
 
 	self.x += self.vel.x
 	self.y -= self.vel.y
 
-	self:handle_animation()
+	self:handle_anim()
 end
 function player:draw()
 	spr(self.spr, self.x, self.y, 1, 1, self.flip)
@@ -205,14 +218,14 @@ function _update()
 	active_world:update()
 end
 __gfx__
-00000000088eeee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000002888888e088eeee000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000288888882888888e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000288188812888888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000288888882881888100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000228888822888888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000022222202888888200000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000008200008e8222222e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000008eee0000000000008eee00008eee000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000028888e0008eee00028888e0028888e00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000002818810028888e002818810028188100000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000028888802281881e02888880028888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000028888802288888802888880028888800000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000002222000288888000222210012222000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000001001000122221000100000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 77777777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 76666665000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 76666665000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
