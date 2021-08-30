@@ -165,17 +165,12 @@ function player(sx, sy)
 				p.mx += 1
 				p.s = 1
 				p.f = false
-			else
-				p.mx = p.x
-			end
-			if btn(up) and p.y > min_tile then
+			elseif btn(up) and p.y > min_tile then
 				p.my -= 1
 				p.s = 0
 			elseif btn(down) and p.y < max_tile then
 				p.my += 1
 				p.s = 0
-			else
-				p.my = p.y
 			end
 
 			if p.x ~= p.mx or p.y ~= p.my then -- moving
@@ -191,9 +186,11 @@ function player(sx, sy)
 end
 
 function algae(x, y)
-	local a = ent:new(16, x, y) -- 16 - 19
+	local a = ent:new(16, x, y) -- 16 - 19 (sprites)
 
 	a.gt = 0 -- grow timer
+	a.spread = false
+	a.sc = 0 -- spread count
 
 	a.draw = function()
 		ent.draw(a)
@@ -202,16 +199,53 @@ function algae(x, y)
 	a.update = function()
 		ent.update(a)
 		a.gt += dt
+
+		if a.spread == false then
+			if a.gt > 19 then
+				a.s = 19
+				a.spread = true -- can spread to other tiles
+				a.sc = 2
+			elseif a.gt > 12 then
+				a.s = 18
+			elseif a.gt > 5 then
+				a.s = 17
+			end
+		end
 	end
 
 	return a
 end
 
 world_1 = world:new()
+world_1.algaes = {}
+function world_1:add_algae(a)
+	add(self.algaes, a)
+end
+function world_1:draw()
+	world.draw(self) -- super
+
+	for a in all(self.algaes) do
+		a:draw()
+	end
+end
+function world_1:update()
+	world.update(self) -- super
+
+	for a in all(self.algaes) do
+		a:update()
+
+		if a.spread and a.sc > 0 then
+			-- todo, chance to spread to an adajcent, non-algae tile
+			self:add_algae(algae(a.x+1, a.y))
+			a.sc -= 2
+		end
+	end
+end
 world_1:add_entity(player(8, 8))
 
 -- TODO: Randomly place algae after certain times
-world_1:add_entity(algae(12, 12))
+world_1:add_algae(algae(12, 12))
+
 
 active_world = world_1
 
