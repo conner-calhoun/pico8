@@ -232,7 +232,7 @@ function tank()
 			a:draw()
 		end
 	end
-	t.update = function() do
+	t.update = function()
 		world.update(t)
 		for a in all(t.algaes) do
 			a:update()
@@ -270,6 +270,7 @@ function tank()
 		end
 	end
 end
+
 world_1 = world:new()
 world_1.algaes = {}
 function world_1:add_algae(x, y)
