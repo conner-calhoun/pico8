@@ -45,6 +45,9 @@ function lerp (from, to, step)
 		return to
 	end
 end
+function in_bounds(x)
+	return (x <= max_tile and x >= min_tile)
+end
 
 world = {}
 function world:new()
@@ -78,8 +81,6 @@ function ent:new(spr, x, y)
 	this = {}
 	setmetatable(this, self)
 	self.__index=self
-
-	this.type = "u"
 
 	-- position (tile coordinates)
 	this.x = x
@@ -144,7 +145,6 @@ end
 -- helper function to create the player (snail)
 function player(sx, sy)
 	local p = ent:new(0, sx, sy)
-	p.type = "s"
 
 	-- movement for lerping
 	p.mx = p.x
@@ -201,13 +201,13 @@ function algae(x, y)
 		a.gt += dt
 
 		if a.spread == false then
-			if a.gt > 19 then
+			if a.gt > 12 then
 				a.s = 19
 				a.spread = true -- can spread to other tiles
 				a.sc = 2
-			elseif a.gt > 12 then
+			elseif a.gt > 7 then
 				a.s = 18
-			elseif a.gt > 5 then
+			elseif a.gt > 3 then
 				a.s = 17
 			end
 		end
@@ -216,14 +216,69 @@ function algae(x, y)
 	return a
 end
 
+
+-- create the tank
+function tank()
+	t = world:new()
+	t.algaes = {}
+	t.add_algae = function(x, y)
+		local a = algae(x, y)
+		self.grid[x][y] = "a"
+		add(self.algaes, a)
+	end
+	t.draw = function()
+		world.draw(t)
+		for a in all(t.algaes) do
+			a:draw()
+		end
+	end
+	t.update = function() do
+		world.update(t)
+		for a in all(t.algaes) do
+			a:update()
+
+			if a.spread and a.sc > 0 then
+				local place = flr(rnd(5)) -- 1 / 5 chance to spread
+				if place == 1 then
+					dir = flr(rnd(8))
+					local x, y = 0, 0
+					if dir == 1 then x, y = 0, -1 end  -- up
+					if dir == 2 then x, y = 1, -1 end  -- upright
+					if dir == 3 then x, y = 1, 0 end   -- right
+					if dir == 4 then x, y = 1, 1 end   -- downright
+					if dir == 5 then x, y = 0, 1 end   -- down
+					if dir == 6 then x, y = -1, 1 end  -- downleft
+					if dir == 7 then x, y = -1, 0 end  -- left
+					if dir == 8 then x, y = -1, -1 end -- upleft
+
+					px, py = a.x+x, a.y+y
+					if t.grid[px][py] != "a" and in_bounds(px) and in_bounds(py) then
+						t:add_algae(a.x+x, a.y+y)
+						a.sc -= 1
+					end
+				end
+			end
+		end
+	end
+	t.reset_grid = function()
+		t.grid = {}
+		for i = 0, 15 do
+			t.grid[i] = {}
+			for j = 0, 15 do
+				t.grid[i][j] = "c"
+			end
+		end
+	end
+end
 world_1 = world:new()
 world_1.algaes = {}
-function world_1:add_algae(a)
+function world_1:add_algae(x, y)
+	local a = algae(x, y)
+	self.grid[x][y] = "a"
 	add(self.algaes, a)
 end
 function world_1:draw()
 	world.draw(self) -- super
-
 	for a in all(self.algaes) do
 		a:draw()
 	end
@@ -235,17 +290,45 @@ function world_1:update()
 		a:update()
 
 		if a.spread and a.sc > 0 then
-			-- todo, chance to spread to an adajcent, non-algae tile
-			self:add_algae(algae(a.x+1, a.y))
-			a.sc -= 2
+			local place = flr(rnd(5)) -- 1 / 5 chance to spread
+			if place == 1 then
+				dir = flr(rnd(8))
+				local x, y = 0, 0
+				if dir == 1 then x, y = 0, -1 end  -- up
+				if dir == 2 then x, y = 1, -1 end  -- upright
+				if dir == 3 then x, y = 1, 0 end   -- right
+				if dir == 4 then x, y = 1, 1 end   -- downright
+				if dir == 5 then x, y = 0, 1 end   -- down
+				if dir == 6 then x, y = -1, 1 end  -- downleft
+				if dir == 7 then x, y = -1, 0 end  -- left
+				if dir == 8 then x, y = -1, -1 end -- upleft
+
+				px, py = a.x+x, a.y+y
+				if self.grid[px][py] != "a" and in_bounds(px) and in_bounds(py) then
+					self:add_algae(a.x+x, a.y+y)
+					a.sc -= 1
+				end
+			end
 		end
 	end
 end
-world_1:add_entity(player(8, 8))
+function world_1:reset_grid()
+	self.grid = {}
+	for i = 0, 15 do
+		world_1.grid[i] = {}
+
+		for j = 0, 15 do
+			world_1.grid[i][j] = "c" -- Fill the values here
+		end
+	end
+end
+
+world_1:reset_grid()
+world_1:add_entity(player(0, 0))
 
 -- TODO: Randomly place algae after certain times
-world_1:add_algae(algae(12, 12))
-
+world_1:add_algae(12, 12)
+world_1:add_algae(3, 6)
 
 active_world = world_1
 
