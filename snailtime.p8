@@ -231,6 +231,23 @@ function tank()
 	end
 	t.update = function(self)
 		world.update(self)
+		self:handle_algae()
+	end
+	t.rgrid = function(self)
+		self.grid = {}
+		for i = 0, 15 do
+			self.grid[i] = {}
+			for j = 0, 15 do
+				self.grid[i][j] = "c"
+			end
+		end
+	end
+	t.add_algae = function(self, x, y)
+		local a = algae(x, y)
+		self.grid[x][y] = "a"
+		add(t.algaes, a)
+	end
+	t.handle_algae = function(self)
 		for a in all(self.algaes) do
 			a:update()
 
@@ -256,20 +273,6 @@ function tank()
 				end
 			end
 		end
-	end
-	t.rgrid = function(self)
-		self.grid = {}
-		for i = 0, 15 do
-			self.grid[i] = {}
-			for j = 0, 15 do
-				self.grid[i][j] = "c"
-			end
-		end
-	end
-	t.add_algae = function(self, x, y)
-		local a = algae(x, y)
-		self.grid[x][y] = "a"
-		add(t.algaes, a)
 	end
 	return t
 end
@@ -305,17 +308,17 @@ function title:draw()
 	end
 
 	-- draw controls
-	print("⬆️⬇️⬅️➡️ to move, ❎ to eat", 10, 25, black)
-	print("press ❎ to begin!", 10, 35, black)
+	print("⬆️⬇️⬅️➡️ to move, ❎ to eat", 8, 28, green)
+	print("press ❎ to begin!", 8, 35, green)
 end
 function title:update()
 	if btn(use1) or btn(use2) then
 		active_world = world_1
 	end
+	self:handle_algae()
 end
 title:add_algae(6,8)
 
--- active_world = world_1
 active_world = title
 
 last_frame = 0.0
