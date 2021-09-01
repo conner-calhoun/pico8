@@ -12,9 +12,11 @@ black,dark_blue,dark_purple,dark_green,brown,dark_gray,light_gray,white,red,oran
 ent_types = {"s", "c", "a", "f", "u"} -- snail, clean, algae, fish, unknown
 move_cooldown = 0.5
 
--- Random tiles start growing algae
--- world updates realtime
--- need to figure out a movement cap
+-- todo
+-- 1. edible algae
+-- 2. fish that move around
+-- 3. Fish will eat YOU!
+-- 4. Day System. Day 1, 1 algae, Day 2, 2 algae and so forth
 
 -- start engine code
 function min(l, r)
@@ -113,9 +115,12 @@ end
 function ent:add_anim(name, anim)
 	self.l[name] = anim
 end
+function ent:set_anim(name)
+	self.a = name
+end
 function ent:handle_anim()
 	if self.a then
-		local anim = self.l[self.s]
+		local anim = self.l[self.a]
 		if time() - anim.t > anim.d then
 			self.s += 1
 			if self.s > anim.e or self.s < anim.s then
@@ -134,8 +139,8 @@ function anim:new(s, e, d)
 
 	this.s = s -- start frame
 	this.e = e -- end frame
+	this.d = d -- delay
 	this.t = 0 -- timer
-	this.d = d
 
 	return this
 end
@@ -190,28 +195,44 @@ function algae(x, y)
 
 	a.gt = 0 -- grow timer
 	a.spread = false
+	a.e = false -- currently being eaten
 	a.sc = 0 -- spread count
+	-- timing
+	a.maxg = 10
+	a.medg = 6
+	a.ming = 3
 
 	a.draw = function(self)
 		ent.draw(self)
 	end
-
 	a.update = function(self)
 		ent.update(self)
-		self.gt += dt
-
-		if self.spread == false then
-			if self.gt > 12 then
-				self.s = 19
+		if self.spread == false and self.e == false then
+			self.gt += dt
+			if self.gt > self.maxg then
+				self.gt = self.maxg
 				self.spread = true -- can spread to other tiles
 				self.sc = 2
-			elseif self.gt > 7 then
-				self.s = 18
-			elseif self.gt > 3 then
-				self.s = 17
 			end
+			self:handle_spr()
+		end
+
+		if self.e then
+			self.spread = false
+			self.gt -= dt
+			self.handle_spr()
 		end
 	end
+	a.handle_spr = function(self)
+		if self.gt > self.maxg then
+			self.s = 19
+		elseif self.gt > self.medg then
+			self.s = 18
+		elseif self.gt > self.ming then
+			self.s = 17
+		end
+	end
+
 
 	return a
 end
@@ -266,7 +287,7 @@ function tank()
 					if dir == 8 then x, y = -1, -1 end -- upleft
 
 					px, py = a.x+x, a.y+y
-					if self.grid[px][py] != "a" and in_bounds(px) and in_bounds(py) then
+					if in_bounds(px) and in_bounds(py) and self.grid[px][py] != "a" then
 						self:add_algae(a.x+x, a.y+y)
 						a.sc -= 1
 					end
@@ -277,9 +298,38 @@ function tank()
 	return t
 end
 
+-- bubble stuff
+function bubble(x, y)
+	-- sprites 48 - 51
+	b = ent:new(48, x, y)
+	b:add_anim("def", anim:new(48,51,0.2))
+	b:set_anim("def")
+
+	function b:draw()
+		ent.draw(self)
+	end
+
+	function b:update()
+		ent.update(self)
+
+		self.y -= dt * 1.5
+		self.x += 1.2 * dt * sin(self.t)
+		self:handle_anim()
+
+		if self.y < -5 then
+			-- todo - delete me
+		end
+	end
+
+	return b
+end
+
 world_1 = tank()
 world_1:rgrid()
 world_1:add_entity(player(0, 0))
+
+world_1:add_entity(bubble(10, 5))
+
 world_1:add_algae(12, 12)
 world_1:add_algae(3, 6)
 
@@ -359,6 +409,14 @@ __gfx__
 99999999999999990000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 99999999999999990000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 99999999999999990000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000077777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00777000700000700077777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+07000700700000700700000700777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+07000700700000700700000707000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+07000700700000700700000707000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00777000700000700700000707000700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000077777000700000700777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000077777000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 __label__
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
 cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
