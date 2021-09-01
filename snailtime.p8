@@ -11,6 +11,7 @@ left,right,up,down,use1,use2=0,1,2,3,4,5
 black,dark_blue,dark_purple,dark_green,brown,dark_gray,light_gray,white,red,orange,yellow,green,blue,indigo,pink,peach=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
 ent_types = {"s", "c", "a", "f", "u"} -- snail, clean, algae, fish, unknown
 move_cooldown = 0.5
+chow_speed = 3
 
 -- todo
 -- 1. edible algae
@@ -154,6 +155,7 @@ function player(sx, sy)
 	-- movement for lerping
 	p.mx = p.x
 	p.my = p.y
+	p.eating_at = nil
 
 	p.draw = function(self)
 		ent.draw(self) -- super
@@ -186,6 +188,13 @@ function player(sx, sy)
 		end
 		self.x = lerp(self.x, self.mx, 0.1)
 		self.y = lerp(self.y, self.my, 0.1)
+
+		-- eating
+		if btn(use1) or btn(use2) and active_world.grid[self.mx][self.my] == "a" then
+			self.eating_at = {self.mx, self.my}
+		else
+			self.eating_at = nil
+		end
 	end
 	return p
 end
@@ -219,8 +228,12 @@ function algae(x, y)
 
 		if self.e then
 			self.spread = false
-			self.gt -= dt
-			self.handle_spr()
+			self.gt -= dt * chow_speed
+			self:handle_spr()
+			if self.gt < 0 then
+				del(active_world.algaes, self)
+				active_world.grid[self.x][self.y] = "c"
+			end
 		end
 	end
 	a.handle_spr = function(self)
@@ -233,7 +246,6 @@ function algae(x, y)
 		end
 	end
 
-
 	return a
 end
 
@@ -242,6 +254,7 @@ end
 function tank()
 	local t = world:new()
 
+	t.player = nil
 	t.grid = {}
 	t.algaes = {}
 	t.draw = function(self)
@@ -262,6 +275,10 @@ function tank()
 				self.grid[i][j] = "c"
 			end
 		end
+	end
+	function t:add_player(p)
+		world.add_entity(self, p)
+		self.player = p
 	end
 	t.add_algae = function(self, x, y)
 		local a = algae(x, y)
@@ -293,6 +310,16 @@ function tank()
 					end
 				end
 			end
+
+			-- get player (eating?)
+			if self.player and self.player.eating_at then
+				local el = self.player.eating_at
+				if el[1] == a.x and el[2] == a.y then
+					a.e = true
+				else
+					a.e = false
+				end
+			end
 		end
 	end
 	return t
@@ -305,10 +332,6 @@ function bubble(x, y)
 	b:add_anim("def", anim:new(48,51,0.2))
 	b:set_anim("def")
 
-	function b:draw()
-		ent.draw(self)
-	end
-
 	function b:update()
 		ent.update(self)
 
@@ -317,7 +340,7 @@ function bubble(x, y)
 		self:handle_anim()
 
 		if self.y < -5 then
-			-- todo - delete me
+			del(active_world.ents, self) -- this is how to delete
 		end
 	end
 
@@ -326,9 +349,9 @@ end
 
 world_1 = tank()
 world_1:rgrid()
-world_1:add_entity(player(0, 0))
+world_1:add_player(player(8, 8))
 
-world_1:add_entity(bubble(10, 5))
+world_1:add_entity(bubble(2, 15))
 
 world_1:add_algae(12, 12)
 world_1:add_algae(3, 6)
@@ -373,6 +396,16 @@ active_world = title
 
 last_frame = 0.0
 dt = 0.0
+
+function _init()
+	-- loop over each tile in the world
+	-- do special things if the tile is special
+	for i = 0, 15 do
+		for j = 0, 15 do
+			local tile = mget(i, j)
+		end
+	end
+end
 
 function _draw()
 	active_world:draw()
