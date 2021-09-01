@@ -205,7 +205,6 @@ function algae(x, y)
 	a.gt = 0 -- grow timer
 	a.spread = false
 	a.e = false -- currently being eaten
-	a.sc = 0 -- spread count
 	-- timing
 	a.maxg = 10
 	a.medg = 6
@@ -266,6 +265,13 @@ function tank()
 	t.update = function(self)
 		world.update(self)
 		self:handle_algae()
+
+		-- chance to spawn bubbles
+		local spawn = flr(rnd(50))
+		if spawn == 0 then
+			local pos = flr(rnd(15))
+			self:add_entity(bubble(pos, 15))
+		end
 	end
 	t.rgrid = function(self)
 		self.grid = {}
@@ -289,8 +295,8 @@ function tank()
 		for a in all(self.algaes) do
 			a:update()
 
-			if a.spread and a.sc > 0 then
-				local place = flr(rnd(5)) -- 1 / 5 chance to spread
+			if a.spread then
+				local place = flr(rnd(30)) -- 1 / 10 chance to spread
 				if place == 1 then
 					dir = flr(rnd(8))
 					local x, y = 0, 0
@@ -306,7 +312,6 @@ function tank()
 					px, py = a.x+x, a.y+y
 					if in_bounds(px) and in_bounds(py) and self.grid[px][py] != "a" then
 						self:add_algae(a.x+x, a.y+y)
-						a.sc -= 1
 					end
 				end
 			end
