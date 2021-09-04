@@ -36,6 +36,13 @@ function lerp (from, to, step)
 		return to
 	end
 end
+function btwn(a, l, h)
+	if a >= l and a <= h then
+		return true
+	else
+		return false
+	end
+end
 
 world = {}
 function world:new()
@@ -227,6 +234,11 @@ function ball(sx, sy)
 	b.htia = 0 -- hit time in air
 	b.kh = world_size + 8 -- height to kill ball
 	b.ft = 0 -- height to fall to
+	b.dis = false -- disappear in the sky
+	b.si = false -- score incremented
+
+	b:add_anim("star", anim:new(53, 55, 0.2))
+
 	function b:draw()
 		ent.draw(self)
 	end
@@ -234,24 +246,47 @@ function ball(sx, sy)
 		ent.update(self)
 
 		if not self.h then
+			-- being pitched
 			self.y += self.spd * dt
 			self.x += 50 * (dt * sin(self.t * 5))
 		else
+			-- ball hit
 			self.htia += dt
-			self.x += self.an * dt
-			self.ft = 128 - (self.ve * 20)
+			self.dx += self.an * dt
+			self.ft = min(128 - (self.ve * 10), 128 / 2)
 
-			if self.htia > self.ve then
-				-- add to score
-				self.dy = lerp(self.dy, -2.5, self.ve) -- lerp to gravity
-				self.dx = lerp(self.dx, 0, 5)
+			if self.htia > self.ve / 2 then
+				if not self.si then
+					-- increment the score once
+					active_world:inc_score(flr(abs(self.y - 128) / 10))
+					self.si = true
+				end
+				self.dy = lerp(self.dy, -1.5, self.ve) -- lerp to gravity
+				self.dx = lerp(self.dx, 0, 1)
 
-				if self.y > self.ft then
+				if self.y < 0 then -- way out there
+					self.s = 52
+					self.dis = true
+				end
+
+				if self.dis then -- disappear in the sky
+					if self.y > 20 or self.dy == 0 then
+						-- play star anim, then kill
+						self:set_anim("star")
+						if self.s == 55 then
+							active_world:kill(self)
+						end
+						return
+					end
+				end
+
+				if self.y > self.ft then -- grounded
 					self.dy = 0
+					self.dx = 0
 				end
 			else
 				self.dy = lerp(self.dy, (self.hsp * dt) * self.ve, self.ve)
-				self.dx =self.an * dt
+				self.dx = self.an * dt
 			end
 
 			self.y -= self.dy
@@ -259,6 +294,7 @@ function ball(sx, sy)
 		end
 
 		if self.y > self.kh then
+			-- strike
 			sks += 1
 			active_world:kill(self)
 		end
@@ -266,27 +302,29 @@ function ball(sx, sy)
 	function b:hit(ct, bd)
 		self.h = true
 		local v = 0
-		if bd == 25 or bd == 5 then v = ct * 0.5 end
-		if bd == 24 or bd == 6 then v = ct * 0.7 end
-		if bd == 23 or bd == 7 then v = ct * 0.9 end
-		if bd == 22 or bd == 8 then v = ct * 1.2 end
-		if bd == 21 or bd == 9 then v = ct * 1.5 end
-		if bd == 20 or bd == 10 then v = ct * 1.8 end
-		if bd == 19 or bd == 11 then v = ct * 2.0 end
-		if bd == 18 or bd == 12 then v = ct * 2.2 end
-		if bd == 17 or bd == 13 then v = ct * 2.3 end
-		if bd == 16 or bd == 14 then v = ct * 2.5 end
-		if bd == 15 then
-			v = self.ct * 3.5
-			active_world:critical_hit()
-		end
-		if bd < 25 and bd > 17 then
-			self.an = -50
-		elseif bd < 13 then
-			self.an = 50
-		else
+
+		if bd == 15 then -- crit
+			v = ct * 3.5
 			self.an = 0
+			active_world:critical_hit()
+		elseif btwn(bd, 16, 18) or btwn(bd, 12, 14) then -- good
+			v = ct * 2.5
+			self.an = 10
+		elseif btwn(bd, 19, 21) or btwn(bd, 9, 11) then -- okay
+			v = ct * 1.8
+			self.an = 20
+		elseif btwn(bd, 22, 4) or btwn(bd, 6, 8) then -- bad
+			v = ct * 1.0
+			self.an = 40
+		elseif bd == 25 or bd == 5 then --awful
+			v = ct * 0.5
+			self.an = 50
 		end
+
+		if bd > 15 then -- angle left if too early
+			self.an *= -1
+		end
+
 		self.ve = v
 	end
 
@@ -324,6 +362,7 @@ function new_mound()
 	mound.sh = false
 	mound.st = 0
 	mound.sd = 0
+	mound.new_score = 0
 	function mound:draw()
 		world.draw(self)
 
@@ -335,6 +374,10 @@ function new_mound()
 	function mound:update()
 		world.update(self)
 		self.player:update()
+
+		if self.new_score ~= score then
+			score = flr(lerp(score, self.new_score, (self.new_score-score)/5))
+		end
 
 		if self.sh and self.st < self.sd then
 			self.st += dt
@@ -370,6 +413,9 @@ function new_mound()
 	end
 	function mound:critical_hit()
 		-- todo, some kind of cool thing
+	end
+	function mound:inc_score(to_add)
+		self.new_score = score + to_add
 	end
 	return mound
 end
@@ -420,13 +466,13 @@ __gfx__
 00000000cccccc65bb3bbbbb00000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbb00000778868887777666333330000000003b0000003b0000
 00000000cccccc65bb3bbbbb00000000000000000000000000000000bbbbbbbbbbbbbbbbbbbbbbbb000007786766888777776666000000000333b0000333b000
 00000000bbbbbbbb0000000000000000000000000000000000000000000000000000000000000000000077787777888888877777800000003333300033333000
-00000000bbbbbbbb0000000000777700000000000000000000000000000000000000000000000000000077787777866666888888800000003333000033330000
-00000000bbbbbbbb00000000087777800000000000000000000000000000000000000000000000000000778877778777788666666000000003355000033aa000
-00000000bbbbbbbb000000000787787000000000000000000000000000000000000000000000000000007787777887777877777770000000055550000aaaa000
-00000000bbbbbbbb0000000007877870000000000000000000000000000000000000000000000000000077877778777778777777700000000000000000000000
-00000000bbbbbbbb0000000008777780000000000000000000000000000000000000000000000000000077877778777778777777700000000000000000000000
-00000000bbbbbbbb0000000000777700000000000000000000000000000000000000000000000000000077877778777778777777700000000000000000000000
-00000000bbbbbbbb0000000000000000000000000000000000000000000000000000000000000000000007877778777778777777000000000000000000000000
+00000000bbbbbbbb00000000007777000000000000000000000000000000a0000000000000000000000077787777866666888888800000003333000033330000
+00000000bbbbbbbb000000000877778000000000000000000000a00000a0a0a000000000000000000000778877778777788666666000000003355000033aa000
+00000000bbbbbbbb000000000787787000087000000000000000a00000000000000000000000000000007787777887777877777770000000055550000aaaa000
+00000000bbbbbbbb0000000007877870000780000000a00000aa0aa00aa000aa0000000000000000000077877778777778777777700000000000000000000000
+00000000bbbbbbbb000000000877778000000000000000000000a000000000000000000000000000000077877778777778777777700000000000000000000000
+00000000bbbbbbbb000000000077770000000000000000000000a00000a0a0a00000000000000000000077877778777778777777700000000000000000000000
+00000000bbbbbbbb00000000000000000000000000000000000000000000a0000000000000000000000007877778777778777777000000000000000000000000
 cc75555555777557555557cc00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 c7777777777777777777777c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 77777777777777777777777700000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
