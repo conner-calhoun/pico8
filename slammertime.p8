@@ -235,7 +235,6 @@ function ball(sx, sy)
 	b.kh = world_size + 8 -- height to kill ball
 	b.ft = 0 -- height to fall to
 	b.dis = false -- disappear in the sky
-	b.si = false -- score incremented
 
 	b:add_anim("star", anim:new(53, 55, 0.2))
 
@@ -256,11 +255,6 @@ function ball(sx, sy)
 			self.ft = min(128 - (self.ve * 10), 128 / 2)
 
 			if self.htia > self.ve / 2 then
-				if not self.si then
-					-- increment the score once
-					active_world:inc_score(flr(abs(self.y - 128) / 10))
-					self.si = true
-				end
 				self.dy = lerp(self.dy, -1.5, self.ve) -- lerp to gravity
 				self.dx = lerp(self.dx, 0, 1)
 
@@ -303,21 +297,27 @@ function ball(sx, sy)
 		self.h = true
 		local v = 0
 
+		local si = 0
 		if bd == 15 then -- crit
 			v = ct * 3.5
 			self.an = 0
+			si = 150
 			active_world:critical_hit()
 		elseif btwn(bd, 16, 18) or btwn(bd, 12, 14) then -- good
 			v = ct * 2.5
+			si = 75
 			self.an = 10
 		elseif btwn(bd, 19, 21) or btwn(bd, 9, 11) then -- okay
 			v = ct * 1.8
+			si = 50
 			self.an = 20
 		elseif btwn(bd, 22, 4) or btwn(bd, 6, 8) then -- bad
 			v = ct * 1.0
+			si = 10
 			self.an = 40
 		elseif bd == 25 or bd == 5 then --awful
 			v = ct * 0.5
+			si = 1
 			self.an = 50
 		end
 
@@ -326,6 +326,9 @@ function ball(sx, sy)
 		end
 
 		self.ve = v
+
+		-- increment score by value
+		active_world:inc_score(si)
 	end
 
 	return b
@@ -376,7 +379,7 @@ function new_mound()
 		self.player:update()
 
 		if self.new_score ~= score then
-			score = flr(lerp(score, self.new_score, (self.new_score-score)/5))
+			score = flr(lerp(score, self.new_score, (self.new_score-score)/10))
 		end
 
 		if self.sh and self.st < self.sd then
