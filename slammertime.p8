@@ -226,7 +226,7 @@ end
 function ball(sx, sy)
 	local b = ent:new(51, sx, sy)
 
-	b.spd = 70
+	b.spd = 120
 	b.hsp = 30
 	b.h = false
 	b.ve = 0
@@ -254,13 +254,18 @@ function ball(sx, sy)
 			self.dx += self.an * dt
 			self.ft = min(128 - (self.ve * 10), 128 / 2)
 
-			if self.htia > self.ve / 2 then
-				self.dy = lerp(self.dy, -1.5, self.ve) -- lerp to gravity
+			if self.htia > self.ve / 2  or self.y < -10 then
+				self.dy = lerp(self.dy, -1.5, 1) -- lerp to gravity
 				self.dx = lerp(self.dx, 0, 1)
 
 				if self.y < 0 then -- way out there
 					self.s = 52
 					self.dis = true
+				end
+
+				if self.y > self.ft then -- grounded
+					self.dy = 0
+					self.dx = 0
 				end
 
 				if self.dis then -- disappear in the sky
@@ -272,11 +277,6 @@ function ball(sx, sy)
 						end
 						return
 					end
-				end
-
-				if self.y > self.ft then -- grounded
-					self.dy = 0
-					self.dx = 0
 				end
 			else
 				self.dy = lerp(self.dy, (self.hsp * dt) * self.ve, self.ve)
@@ -300,20 +300,20 @@ function ball(sx, sy)
 		local si = 0
 		if bd == 15 then -- crit
 			v = ct * 3.5
+			si = 50
 			self.an = 0
-			si = 150
 			active_world:critical_hit()
 		elseif btwn(bd, 16, 18) or btwn(bd, 12, 14) then -- good
 			v = ct * 2.5
-			si = 75
+			si = 30
 			self.an = 10
 		elseif btwn(bd, 19, 21) or btwn(bd, 9, 11) then -- okay
 			v = ct * 1.8
-			si = 50
+			si = 20
 			self.an = 20
 		elseif btwn(bd, 22, 4) or btwn(bd, 6, 8) then -- bad
 			v = ct * 1.0
-			si = 10
+			si = 5
 			self.an = 40
 		elseif bd == 25 or bd == 5 then --awful
 			v = ct * 0.5
@@ -328,7 +328,7 @@ function ball(sx, sy)
 		self.ve = v
 
 		-- increment score by value
-		active_world:inc_score(si)
+		active_world:inc_score(si*ct)
 	end
 
 	return b
@@ -379,7 +379,7 @@ function new_mound()
 		self.player:update()
 
 		if self.new_score ~= score then
-			score = flr(lerp(score, self.new_score, (self.new_score-score)/10))
+			score = flr(lerp(score, self.new_score, (self.new_score)/10))
 		end
 
 		if self.sh and self.st < self.sd then
@@ -393,6 +393,11 @@ function new_mound()
 			self.sh = false
 			self.st = 0
 			self.sd = 0
+		end
+
+		if sks >= 3 then
+			active_world = game_over()
+			return
 		end
 	end
 	function mound:throw()
@@ -423,6 +428,44 @@ function new_mound()
 	return mound
 end
 
+function title()
+	local title = new_world()
+	function title:draw()
+		-- world.draw(self)
+		cls()
+		print("slammertime!", 5, 10, white)
+		print("press and hold ❎ to charge!", 5, 17, white)
+		print("release to swing!", 5, 23, white)
+		print("good luck!", 5, 29, white)
+		print("press ❎ to begin", 5, 100, white)
+	end
+	function title:update()
+		world.update(self)
+		if btn(use1) or btn(use2) then
+			active_world = new_mound()
+		end
+	end
+	return title
+end
+
+function game_over()
+	local g = new_world()
+	function g:draw()
+		cls()
+		print("game over!", 5, 10, white)
+		print("final score: "..score, 5, 17, white)
+		print("press ❎ to retry", 5, 100, white)
+	end
+	function g:update()
+		world.update(self)
+		if btn(use1) or btn(use2) then
+			score = 0
+			sks = 0
+			active_world = new_mound()
+		end
+	end
+	return g
+end
 
 last_frame = 0.0
 dt = 0.0
@@ -430,7 +473,7 @@ score = 0
 sks = 0
 active_world = nil
 function _init()
-	active_world = new_mound()
+	active_world = title()
 end
 
 function _draw()
