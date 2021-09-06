@@ -289,7 +289,7 @@ function ball(sx, sy)
 						-- play star anim, then kill
 						self:set_anim("star")
 						if self.s == 55 then
-							sfx(3)
+							-- sfx(3) -- star sound, sounds bad atm
 							active_world:kill(self)
 						end
 						return
@@ -434,6 +434,7 @@ function new_mound()
 	end
 	function mound:hit_ball(ct, bd)
 		self.cb:hit(ct/1.5, bd)
+		self.cb = nil
 	end
 	function mound:shake(dur)
 		self.sd = dur
