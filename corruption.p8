@@ -58,6 +58,7 @@ function anim_player:new()
     self.__index=self
 
     this.sprite = nil
+    this.current = nil
 	this.anim_list = {}
 
     this.add = function(self, name, anim)
@@ -65,11 +66,11 @@ function anim_player:new()
     end
 
     this.set = function(self, name)
-        self.anim = name
+        self.current = name
     end
 
     this.update = function(self)
-        local anim = self.anim_list[self.anim]
+        local anim = self.anim_list[self.current]
         if not self.sprite then
             self.sprite = anim.start_frame
         end
@@ -85,20 +86,54 @@ function anim_player:new()
     return this
 end
 
-function fire_bullet(x, y, dir)
+function fire_bullet(sx, sy, info)
     bullet = {}
+    bullet.anims = anim_player:new()
+
+    bullet.x = sx
+    bullet.y = sy
+
+    bullet.info = info
+
+    bullet.anims:add("default", anim:new(8, 10, 0.1))
+    bullet.anims:set("default")
+
     bullet.draw = function(self)
-
+        local s = self.anims.sprite
+        spr(s, self.x, self.y)
     end
+
     bullet.update = function(self)
+        self.anims:update()
 
+        dir = self.info.dir
+        speed = self.info.speed
+        if dir == left then
+            self.x -= speed
+        end
+        if dir == right then
+            self.x += speed
+        end
+        if dir == up then
+            self.y -= speed
+        end
+        if dir == down then
+            self.y += speed
+        end
+
+        oob_min = 0 - 16
+        oob_max = world_size + 16
+        if self.x > oob_max or self.x < oob_min or self.y > oob_max or self.y < oob_min then
+            del(bullets, self)
+        end
     end
+    add(bullets, bullet)
 end
 
 function new_player()
     local player = {
         x = 0, y = 0,
-        dir = -1, -- todo 8 dir shooting
+        dir = right, -- todo 8 dir shooting
 
         -- movement
         accel = 0.6,
@@ -175,10 +210,14 @@ function new_player()
             self.y += self.dy
 
             -- ***shoot***
-            if btn(use1) then
+            if btn(use1) or btn(use2) then
                 if (time() - self.last_bullet) > self.bullet_cool then
                     self.last_bullet = time()
-                    fire_bullet(self.x, self.y, self.dir)
+
+                    info = {}
+                    info.dir = self.dir
+                    info.speed = 2.5
+                    fire_bullet(self.x, self.y, info)
                 end
             end
 
@@ -217,10 +256,10 @@ end
 __gfx__
 00000000333336333333333333333333000ee000000000000000ee000000ee000000000000000000000000000000000000000000000000000000000000000000
 0000000033363933333333333555555300edde00000ee00000eede0000eede000000000000000000000000000000000000000000000000000000000000000000
-00000000333b35555559b333355555530ededde00eeddee00ededde00ededde00000000000000000000000000000000000000000000000000000000000000000
-00000000333b3555555333333939393b0ededde0eddeddde0ededde00ededde00000000000000000000000000000000000000000000000000000000000000000
-00000000333b35555559b3333b3b3b3b00edde000ededde000edde0000edde000000000000000000000000000000000000000000000000000000000000000000
-00000000333b3555555333333b3b3b3b000ee00000edde00000eee0000eee0000000000000000000000000000000000000000000000000000000000000000000
+00000000333b35555559b333355555530ededde00eeddee00ededde00ededde000000000000c00000000c0000000000000000000000000000000000000000000
+00000000333b3555555333333939393b0ededde0eddeddde0ededde00ededde00000c00000c0c000000ccc000000000000000000000000000000000000000000
+00000000333b35555559b3333b3b3b3b00edde000ededde000edde0000edde00000ccc00000c00000000c0000000000000000000000000000000000000000000
+00000000333b3555555333333b3b3b3b000ee00000edde00000eee0000eee0000000c00000000000000000000000000000000000000000000000000000000000
 00000000533b35555559b33333bbbbb300e00e0000eeee0000e00ee00ee00e000000000000000000000000000000000000000000000000000000000000000000
 000000005bbb355555533333333b3b330ee00ee00ee00ee00ee0000000000ee00000000000000000000000000000000000000000000000000000000000000000
 33333333533333b3b333333300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
