@@ -22,6 +22,7 @@ function max(l, r)
 		return r
 	end
 end
+-- dirty constant lerp
 function lerp (from, to, step)
 	if abs(from - to) < step then
 		return to
@@ -36,7 +37,7 @@ function lerp (from, to, step)
 	end
 end
 
-
+-- helper for playing animations
 anim = {}
 function anim:new(s, e, d)
 	this = {}
@@ -49,6 +50,39 @@ function anim:new(s, e, d)
 	this.timer = 0 -- timer
 
 	return this
+end
+anim_player = {}
+function anim_player:new()
+    this = {}
+    setmetatable(this, self)
+    self.__index=self
+
+    this.sprite = nil
+	this.anim_list = {}
+
+    this.add_anim = function(self, name, anim)
+        self.anim_list[name] = anim
+    end
+
+    this.set_anim = function(self, name)
+        self.anim = name
+    end
+
+    this.update = function(self)
+        local anim = self.anim_list[self.anim]
+        if not self.sprite then
+            self.sprite = anim.start_frame
+        end
+        if time() - anim.timer > anim.delay then
+            self.sprite += 1
+            if self.sprite > anim.end_frame or self.sprite < anim.start_frame then
+                self.sprite = anim.start_frame
+            end
+            anim.timer = time()
+        end
+    end
+
+    return this
 end
 
 function fire_bullet(x, y, dir)
@@ -65,7 +99,6 @@ function new_player()
     local player = {
         x = 0, y = 0,
         dir = -1,
-        sprite = 4,
 
         -- movement
         accel = 0.6,
@@ -78,15 +111,24 @@ function new_player()
         last_bullet = 0,
         bullet_cool = 0.5, --seconds
 
+        anims = anim_player:new(),
+
         draw_debug = function(self)
             print("bullet timer: " .. time() - self.last_bullet, 0, world_size - 8)
         end,
 
+        init = function(self)
+            self.anims:add_anim("idle", anim:new(4,5,0.5))
+            self.anims:set_anim("idle")
+        end,
+
         draw = function(self)
-            spr(self.sprite, self.x, self.y)
+            local s = self.anims.sprite
+            spr(s, self.x, self.y)
         end,
 
         update = function(self)
+            -- ***move***
             local move_v = false
             local move_h = false
             if btn(up) then
@@ -118,6 +160,10 @@ function new_player()
                 self.dy = lerp(self.dy, 0, self.deccel)
             end
 
+            self.x += self.dx
+            self.y += self.dy
+
+            -- ***shoot***
             if btn(use1) then
                 if (time() - self.last_bullet) > self.bullet_cool then
                     self.last_bullet = time()
@@ -125,8 +171,8 @@ function new_player()
                 end
             end
 
-            self.x += self.dx
-            self.y += self.dy
+            -- ***anims***
+            self.anims:update()
         end
     }
     return player
@@ -138,9 +184,11 @@ bullets = {}
 -- main loops
 function _init()
     player = new_player()
+    player:init()
 end
 
 function _draw()
+    -- todo move this to the world
     map(0, 0, 0, 0, 16, 16)
     player:draw()
 	for bullet in all(bullets) do
@@ -155,17 +203,15 @@ function _update()
 	end
 end
 
--->8
-
 __gfx__
 00000000333336333333333333333333000ee0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000003336393333333333355555530eeddee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000333b35555559b33335555553eddeddde0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000333b3555555333333939393b0ededde00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000333b35555559b3333b3b3b3b00edde000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000333b3555555333333b3b3b3b000ee0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000533b35555559b33333bbbbb300e00e000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-000000005bbb355555533333333b3b330ee00ee00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+0000000033363933333333333555555300edde00000ee00000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000333b35555559b333355555530ededde00eeddee000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000333b3555555333333939393b0ededde0eddeddde00000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000333b35555559b3333b3b3b3b00edde000ededde000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000333b3555555333333b3b3b3b000ee00000edde0000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000533b35555559b33333bbbbb300e00e0000eeee0000000000000000000000000000000000000000000000000000000000000000000000000000000000
+000000005bbb355555533333333b3b330ee00ee00ee00ee000000000000000000000000000000000000000000000000000000000000000000000000000000000
 33333333533333b3b333333300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 333333335bbbb3b3b336363600000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 333333335333b3b3b333333300000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
