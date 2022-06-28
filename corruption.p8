@@ -156,103 +156,127 @@ function new_glitch(sx, sy)
 end
 
 function new_player()
-    local player = {
-        x = 0, y = 0,
-        dir = right, -- todo 8 dir shooting
+    local p = {}
+    -- starts in middle
+    p.w = 8
+    p.h = 8
+    p.x = ((safe_zone.w - safe_zone.x) / 2) + p.w
+    p.y = ((safe_zone.h - safe_zone.y) / 2) + p.h
+    p.dir = right -- todo 8 dir shooting
 
-        -- movement
-        accel = 0.6,
-        decel = 0.15,
-        max_speed = 1.05,
-        dx = 0,
-        dy = 0,
+    -- movement
+    p.accel = 0.6
+    p.decel = 0.15
+    p.max_speed = 1.05
+    p.dx = 0
+    p.dy = 0
 
-        -- bullet stuff
-        last_bullet = 0,
-        bullet_cool = 0.5, --seconds
+    -- bullet stuff
+    p.last_bullet = 0
+    p.bullet_cool = 0.5 --seconds
 
-        -- anims & sprite stuff
-        anims = anim_player:new(),
-        flip = false,
+    -- anims & sprite stuff
+    p.anims = anim_player:new()
+    p.flip = false
 
-        draw_debug = function(self)
-            print("bullet timer: " .. time() - self.last_bullet, 0, world_size - 8)
-        end,
+    p.draw_debug = function(self)
+        print("bullet timer: " .. time() - self.last_bullet, 0, world_size - 8)
+    end
 
-        init = function(self)
-            self.anims:add("idle", anim:new(4,5,0.5))
-            self.anims:add("run", anim:new(6,7,0.25))
-            self.anims:set("idle")
-        end,
+    p.init = function(self)
+        self.anims:add("idle", anim:new(4,5,0.5))
+        self.anims:add("run", anim:new(6,7,0.25))
+        self.anims:set("idle")
+    end
 
-        draw = function(self)
-            local s = self.anims.sprite
-            spr(s, self.x, self.y, 1, 1, self.flip)
-        end,
+    p.draw = function(self)
+        local s = self.anims.sprite
+        spr(s, self.x, self.y, 1, 1, self.flip)
+    end
 
-        update = function(self)
-            -- ***move***
-            local move_v = false
-            local move_h = false
-            if btn(up) then
-                self.dy = max(self.dy-self.accel, -self.max_speed)
-                self.dir = up
-                move_v = true
-            end
-            if btn(down) then
-                self.dy = min(self.dy+self.accel, self.max_speed)
-                self.dir = down
-                move_v = true
-            end
-            if btn(left) then
-                self.dx = max(self.dx-self.accel, -self.max_speed)
-                self.dir = left
-                move_h = true
-                self.flip = true
-            end
-            if btn(right) then
-                self.dx = min(self.dx+self.accel, self.max_speed)
-                self.dir = right
-                move_h = true
-                self.flip = false
-            end
-
-            -- decelerate
-            if not move_h then
-                self.dx = lerp(self.dx, 0, self.decel)
-            end
-            if not move_v then
-                self.dy = lerp(self.dy, 0, self.decel)
-            end
-
-            if move_h or move_v then
-                self.anims:set("run")
-            else
-                self.anims:set("idle")
-            end
-
-            self.x += self.dx
-            self.y += self.dy
-
-            -- ***shoot***
-            if btn(use1) or btn(use2) then
-                if (time() - self.last_bullet) > self.bullet_cool then
-                    self.last_bullet = time()
-
-                    info = {}
-                    info.dir = self.dir
-                    info.speed = 2.5
-                    fire_bullet(self.x, self.y, info)
-                end
-            end
-
-            -- ***anims***
-            self.anims:update()
+    p.update = function(self)
+        -- ***move***
+        local move_v = false
+        local move_h = false
+        if btn(up) then
+            self.dy = max(self.dy-self.accel, -self.max_speed)
+            self.dir = up
+            move_v = true
         end
-    }
-    return player
+        if btn(down) then
+            self.dy = min(self.dy+self.accel, self.max_speed)
+            self.dir = down
+            move_v = true
+        end
+        if btn(left) then
+            self.dx = max(self.dx-self.accel, -self.max_speed)
+            self.dir = left
+            move_h = true
+            self.flip = true
+        end
+        if btn(right) then
+            self.dx = min(self.dx+self.accel, self.max_speed)
+            self.dir = right
+            move_h = true
+            self.flip = false
+        end
+
+        -- decelerate
+        if not move_h then
+            self.dx = lerp(self.dx, 0, self.decel)
+        end
+        if not move_v then
+            self.dy = lerp(self.dy, 0, self.decel)
+        end
+
+        if move_h or move_v then
+            self.anims:set("run")
+        else
+            self.anims:set("idle")
+        end
+
+        -- move
+        self.x += self.dx
+        self.y += self.dy
+
+        -- check bounds
+        if self.x < safe_zone.x then
+            self.x = safe_zone.x
+        end
+        if self.x > safe_zone.w then
+            self.x = safe_zone.w
+        end
+        if self.y < safe_zone.y then
+            self.y = safe_zone.y
+        end
+        if self.y > safe_zone.h then
+            self.y = safe_zone.h
+        end
+
+        -- ***shoot***
+        if btn(use1) or btn(use2) then
+            if (time() - self.last_bullet) > self.bullet_cool then
+                self.last_bullet = time()
+
+                info = {}
+                info.dir = self.dir
+                info.speed = 2.5
+                fire_bullet(self.x, self.y, info)
+            end
+        end
+
+        -- ***anims***
+        self.anims:update()
+    end
+    return p
 end
 
+safe_zone = {
+    x = 8,
+    y = 8,
+    w = 88,
+    h = 112
+}
 function draw_frame()
     map(0, 0, 0, 0, 13, 16)
 end
@@ -267,7 +291,7 @@ function _init()
     player = new_player()
     player:init()
 
-    new_glitch(5, 5)
+    new_glitch(8, 8)
 end
 
 function _draw()
