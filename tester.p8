@@ -1,0 +1,61 @@
+pico-8 cartridge // http://www.pico-8.com
+version 29
+__lua__
+
+-- constants
+size = 128
+left,right,up,down,use1,use2=0,1,2,3,4,5
+black,dark_blue,dark_purple,dark_green,brown,dark_gray,light_gray,white,red,orange,yellow,green,blue,indigo,pink,peach=0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15
+
+-- sample screen shaker obj
+screen_shaker = {
+    shake = false,
+    shake_time = 0,
+    shake_duration = 0
+}
+screen_shaker.run = function(self, duration)
+    self.shake = true
+    self.shake_time = time()
+    self.shake_duration = duration
+end
+screen_shaker.update = function(self) -- must call this in an update loop somewhere
+    if self.shake and (time() - self.shake_time) < self.shake_duration then
+        local cx = flr(rnd(2)) - 1
+        local cy = flr(rnd(2)) - 1
+        camera(cx, cy)
+    else
+        camera(0, 0)
+        self.shake = false
+        self.shake_time = 0
+        self.shake_duration = 0
+    end
+end
+
+-- main loops
+function _init()
+end
+
+function _draw()
+    cls()
+    mid = (size / 2) - 4
+    spr(1, mid, mid)
+end
+
+function _update()
+    screen_shaker:update()
+
+    if btn(use1) or btn(use2) then
+        screen_shaker:run(0.5)
+    end
+end
+
+
+
+__gfx__
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700009009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700009009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000990000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
