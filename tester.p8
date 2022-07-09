@@ -31,17 +31,75 @@ screen_shaker.update = function(self) -- must call this in an update loop somewh
     end
 end
 
+-- helpers for playing animations
+function new_anim(s, e, d)
+    local a = {}
+
+    a.start_frame = s -- start frame
+    a.end_frame = e -- end frame
+    a.delay = d -- delay
+    a.timer = 0 -- timer
+
+    return a
+end
+function new_anim_player()
+    local p = {}
+
+    p.sprite = nil
+    p.current = nil
+    p.anim_list = {}
+
+    p.add = function(self, name, anim)
+        self.anim_list[name] = anim
+    end
+
+    p.set = function(self, name)
+        self.current = name
+    end
+
+    p.update = function(self)
+        local anim = self.anim_list[self.current]
+        if not self.sprite then
+            self.sprite = anim.start_frame
+        end
+        if time() - anim.timer > anim.delay then
+            self.sprite += 1
+            if self.sprite > anim.end_frame or self.sprite < anim.start_frame then
+                self.sprite = anim.start_frame
+            end
+            anim.timer = time()
+        end
+    end
+
+    return p
+end
+
+player = {}
+player.init = function(self)
+    self.anim_player = new_anim_player()
+    self.anim_player:add("default", new_anim(1, 2, 0.1))
+    self.anim_player:set("default")
+end
+player.draw = function(self)
+    mid = (size / 2) - 4
+    spr(self.anim_player.sprite, mid, mid)
+end
+player.update = function(self)
+    self.anim_player:update()
+end
+
 -- main loops
 function _init()
+    player:init()
 end
 
 function _draw()
     cls()
-    mid = (size / 2) - 4
-    spr(1, mid, mid)
+    player:draw()
 end
 
 function _update()
+    player:update()
     screen_shaker:update()
 
     if btn(use1) or btn(use2) then
@@ -54,8 +112,8 @@ end
 __gfx__
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700009009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700009009000990099000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
 00077000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00700700009009000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
-00000000000990000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00700700009009000990099000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+00000000000990000009900000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
