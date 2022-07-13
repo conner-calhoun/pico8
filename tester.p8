@@ -9,23 +9,23 @@ black,dark_blue,dark_purple,dark_green,brown,dark_gray,light_gray,white,red,oran
 
 -- sample screen shaker obj
 screen_shaker = {
-    shake = false,
+    active = false,
     shake_time = 0,
     shake_duration = 0
 }
-screen_shaker.run = function(self, duration)
-    self.shake = true
+screen_shaker.shake = function(self, duration)
+    self.active = true
     self.shake_time = time()
     self.shake_duration = duration
 end
-screen_shaker.update = function(self) -- must call this in an update loop somewhere
-    if self.shake and (time() - self.shake_time) < self.shake_duration then
+screen_shaker.update = function(self) -- must call in the _update function
+    if self.active and (time() - self.shake_time) < self.shake_duration then
         local cx = flr(rnd(2)) - 1
         local cy = flr(rnd(2)) - 1
         camera(cx, cy)
     else
         camera(0, 0)
-        self.shake = false
+        self.active = false
         self.shake_time = 0
         self.shake_duration = 0
     end
@@ -103,7 +103,7 @@ function _update()
     screen_shaker:update()
 
     if btn(use1) or btn(use2) then
-        screen_shaker:run(0.5)
+        screen_shaker:shake(0.5)
     end
 end
 
